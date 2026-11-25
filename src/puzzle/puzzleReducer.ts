@@ -4,6 +4,8 @@ import type {
   GridSize,
   PieceDef,
   PieceLetter,
+  PieceMark,
+  PieceRotation,
   PuzzleState,
   TeamBoard,
   TeamMeta,
@@ -21,20 +23,38 @@ export const initialPuzzleState: PuzzleState = {
   startedAt: null,
 };
 
+const ROTATIONS: PieceRotation[] = [0, 90, 180, 270];
+
 function emptySlots(n: number): (PieceLetter | null)[][] {
   return Array.from({ length: n }, () => Array.from({ length: n }, () => null));
 }
 
-function isComplete(
-  slots: (PieceLetter | null)[][],
+function nextRotation(r: PieceRotation): PieceRotation {
+  return ROTATIONS[(ROTATIONS.indexOf(r) + 1) % 4];
+}
+
+function isPieceCorrect(
+  letter: PieceLetter,
+  row: number,
+  col: number,
+  rotation: PieceRotation,
   pieces: Record<PieceLetter, PieceDef>,
 ): boolean {
-  for (let row = 0; row < slots.length; row++) {
-    for (let col = 0; col < slots[row].length; col++) {
-      const letter = slots[row][col];
+  const p = pieces[letter];
+  return !!p && p.correctRow === row && p.correctCol === col && rotation === 0;
+}
+
+function isComplete(
+  board: TeamBoard,
+  pieces: Record<PieceLetter, PieceDef>,
+): boolean {
+  for (let row = 0; row < board.slots.length; row++) {
+    for (let col = 0; col < board.slots[row].length; col++) {
+      const letter = board.slots[row][col];
       if (!letter) return false;
-      const p = pieces[letter];
-      if (!p || p.correctRow !== row || p.correctCol !== col) return false;
+      if (!isPieceCorrect(letter, row, col, board.rotations[letter] ?? 0, pieces)) {
+        return false;
+      }
     }
   }
   return true;
@@ -59,11 +79,28 @@ function buildBoard(
   seed: number,
 ): TeamBoard {
   const tray = shuffleWithSeed(letters, seed);
+  const rotSeed = shuffleWithSeed(letters, seed ^ 0x9e3779b9);
+  const rotations: Record<PieceLetter, PieceRotation> = {};
+  rotSeed.forEach((letter, i) => {
+    rotations[letter] = ROTATIONS[i % 4];
+  });
   return {
     slots: emptySlots(gridSize),
     tray,
+    rotations,
+    marks: {},
     complete: false,
   };
+}
+
+function clearMark(
+  marks: Record<PieceLetter, PieceMark>,
+  letter: PieceLetter,
+): Record<PieceLetter, PieceMark> {
+  if (!(letter in marks)) return marks;
+  const next = { ...marks };
+  delete next[letter];
+  return next;
 }
 
 export type PuzzleAction =
@@ -78,6 +115,8 @@ export type PuzzleAction =
   | { type: 'SELECT_TEAM'; teamId: number }
   | { type: 'PICK_PIECE'; letter: PieceLetter }
   | { type: 'PLACE'; row: number; col: number }
+  | { type: 'ROTATE' }
+  | { type: 'CHECK' }
   | { type: 'RESET_BOARD' }
   | { type: 'END' }
   | { type: 'RESTART' }
@@ -85,8 +124,18 @@ export type PuzzleAction =
 
 export function puzzleReducer(state: PuzzleState, action: PuzzleAction): PuzzleState {
   switch (action.type) {
-    case 'HYDRATE':
-      return action.state;
+    case 'HYDRATE': {
+      // migrate old saves without rotations/marks
+      const boards: Record<number, TeamBoard> = {};
+      for (const [id, b] of Object.entries(action.state.boards ?? {})) {
+        boards[Number(id)] = {
+          ...b,
+          rotations: b.rotations ?? {},
+          marks: b.marks ?? {},
+        };
+      }
+      return { ...action.state, boards };
+    }
 
     case 'START': {
       const letters = allPieceLetters(action.gridSize);
@@ -124,6 +173,52 @@ export function puzzleReducer(state: PuzzleState, action: PuzzleAction): PuzzleS
       return { ...state, selected: action.letter };
     }
 
+    case 'ROTATE': {
+      if (state.phase !== 'play' || !state.selected) return state;
+      const board = state.boards[state.activeTeamId];
+      if (!board || board.complete) return state;
+      const letter = state.selected;
+      const cur = board.rotations[letter] ?? 0;
+      const rotations = { ...board.rotations, [letter]: nextRotation(cur) };
+      const marks = clearMark(board.marks, letter);
+      const nextBoard: TeamBoard = { ...board, rotations, marks };
+      const complete = isComplete(nextBoard, state.pieces);
+      nextBoard.complete = complete;
+      const boards = { ...state.boards, [state.activeTeamId]: nextBoard };
+      const allDone = state.teams.every((t) => boards[t.id]?.complete);
+      return {
+        ...state,
+        boards,
+        phase: allDone ? 'done' : 'play',
+      };
+    }
+
+    case 'CHECK': {
+      if (state.phase !== 'play' || !state.selected) return state;
+      const board = state.boards[state.activeTeamId];
+      if (!board || board.complete) return state;
+      const letter = state.selected;
+      const loc = findPieceLocation(board, letter);
+      if (!loc || loc.kind !== 'slot') return state;
+      const ok = isPieceCorrect(
+        letter,
+        loc.row,
+        loc.col,
+        board.rotations[letter] ?? 0,
+        state.pieces,
+      );
+      return {
+        ...state,
+        boards: {
+          ...state.boards,
+          [state.activeTeamId]: {
+            ...board,
+            marks: { ...board.marks, [letter]: ok ? 'ok' : 'bad' },
+          },
+        },
+      };
+    }
+
     case 'PLACE': {
       if (state.phase !== 'play' || !state.selected) return state;
       const board = state.boards[state.activeTeamId];
@@ -135,23 +230,23 @@ export function puzzleReducer(state: PuzzleState, action: PuzzleAction): PuzzleS
 
       const slots = board.slots.map((r) => [...r]);
       let tray = [...board.tray];
+      let marks = { ...board.marks };
       const target = slots[action.row][action.col];
 
-      // remove selected from current place
       if (loc.kind === 'tray') {
         tray = tray.filter((l) => l !== letter);
       } else {
         slots[loc.row][loc.col] = null;
       }
+      marks = clearMark(marks, letter);
 
       if (target === null) {
         slots[action.row][action.col] = letter;
       } else if (target === letter) {
-        // same slot — put back
         slots[action.row][action.col] = letter;
       } else {
-        // swap: target goes where selected was
         slots[action.row][action.col] = letter;
+        marks = clearMark(marks, target);
         if (loc.kind === 'tray') {
           tray.push(target);
         } else {
@@ -159,8 +254,14 @@ export function puzzleReducer(state: PuzzleState, action: PuzzleAction): PuzzleS
         }
       }
 
-      const complete = isComplete(slots, state.pieces);
-      const nextBoard: TeamBoard = { slots, tray, complete };
+      const nextBoard: TeamBoard = {
+        slots,
+        tray,
+        rotations: board.rotations,
+        marks,
+        complete: false,
+      };
+      nextBoard.complete = isComplete(nextBoard, state.pieces);
       const boards = { ...state.boards, [state.activeTeamId]: nextBoard };
       const allDone = state.teams.every((t) => boards[t.id]?.complete);
 

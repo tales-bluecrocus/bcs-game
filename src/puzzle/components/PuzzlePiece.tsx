@@ -1,5 +1,5 @@
 import { jigsawPath, pieceEdges, PIECE_PAD } from '../pieceShape';
-import type { PieceDef } from '../types';
+import type { PieceDef, PieceMark } from '../types';
 
 interface Props {
   piece: PieceDef;
@@ -12,6 +12,9 @@ interface Props {
   /** false = decorative inside a slot (no nested button) */
   interactive?: boolean;
   showLabel?: boolean;
+  /** slot = fill cell tighter; tray = leave room for tabs */
+  fit?: 'tray' | 'slot';
+  mark?: PieceMark;
 }
 
 export default function PuzzlePiece({
@@ -24,18 +27,29 @@ export default function PuzzlePiece({
   onClick,
   interactive = true,
   showLabel = true,
+  fit = 'tray',
+  mark,
 }: Props) {
   const edges = pieceEdges(piece.correctRow, piece.correctCol, gridSize);
   const path = jigsawPath(edges);
-  const clipId = `clip-${piece.letter}-${piece.correctRow}-${piece.correctCol}`;
+  const clipId = `clip-${piece.letter}-${piece.correctRow}-${piece.correctCol}-${fit}`;
   const vb = `-${PIECE_PAD} -${PIECE_PAD} ${100 + PIECE_PAD * 2} ${100 + PIECE_PAD * 2}`;
 
+  // Slot: scale so the 100×100 body nearly fills the cell (tabs may overhang)
+  const fillScale = fit === 'slot' ? (100 + PIECE_PAD * 2) / 100 : 1;
+  const markAccent = mark === 'ok' ? '#21d07a' : mark === 'bad' ? '#ff4d5e' : null;
+
+  const scale = fillScale * (selected ? 1.05 : 1);
   const style = {
-    transform: `rotate(${rotateDeg}deg)${selected ? ' scale(1.08)' : ''}`,
+    transform: `rotate(${rotateDeg}deg) scale(${scale})`,
     filter: selected
       ? `drop-shadow(0 0 10px ${accent}) drop-shadow(0 6px 10px rgba(0,0,0,.55))`
-      : 'drop-shadow(0 4px 6px rgba(0,0,0,.45))',
+      : markAccent
+        ? `drop-shadow(0 0 8px ${markAccent}) drop-shadow(0 4px 6px rgba(0,0,0,.45))`
+        : 'drop-shadow(0 4px 6px rgba(0,0,0,.45))',
   } as const;
+
+  const stroke = markAccent ?? (selected ? accent : 'rgba(255,255,255,0.55)');
 
   const body = (
     <>
@@ -57,8 +71,8 @@ export default function PuzzlePiece({
         <path
           d={path}
           fill="none"
-          stroke={selected ? accent : 'rgba(255,255,255,0.55)'}
-          strokeWidth={selected ? 2.2 : 1.4}
+          stroke={stroke}
+          strokeWidth={selected || mark ? 2.4 : 1.4}
         />
       </svg>
       {showLabel && (
@@ -66,10 +80,15 @@ export default function PuzzlePiece({
           className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-md px-1.5 py-0.5 text-sm font-black tracking-wide text-white shadow"
           style={{
             background: 'rgba(0,0,0,0.72)',
-            outline: selected ? `2px solid ${accent}` : undefined,
+            outline: selected
+              ? `2px solid ${accent}`
+              : markAccent
+                ? `2px solid ${markAccent}`
+                : undefined,
           }}
         >
           {piece.letter}
+          {mark === 'ok' ? ' ✓' : mark === 'bad' ? ' ✕' : ''}
         </span>
       )}
     </>

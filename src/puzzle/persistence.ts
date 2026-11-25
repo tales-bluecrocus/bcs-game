@@ -30,7 +30,15 @@ export function loadPuzzleState(): PuzzleState | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as PuzzleState;
     if (!parsed || parsed.phase === 'setup' || !parsed.teams?.length) return null;
-    return parsed;
+    const boards: PuzzleState['boards'] = {};
+    for (const [id, b] of Object.entries(parsed.boards ?? {})) {
+      boards[Number(id)] = {
+        ...b,
+        rotations: b.rotations ?? {},
+        marks: b.marks ?? {},
+      };
+    }
+    return { ...parsed, boards };
   } catch {
     return null;
   }

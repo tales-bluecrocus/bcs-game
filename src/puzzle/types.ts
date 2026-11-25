@@ -16,11 +16,19 @@ export interface TeamMeta {
   color: string;
 }
 
+export type PieceRotation = 0 | 90 | 180 | 270;
+
+export type PieceMark = 'ok' | 'bad';
+
 export interface TeamBoard {
   /** slots[row][col] = piece letter or null */
   slots: (PieceLetter | null)[][];
   /** pieces not on the board */
   tray: PieceLetter[];
+  /** rotation per piece id */
+  rotations: Record<PieceLetter, PieceRotation>;
+  /** host check marks (cleared when piece moves) */
+  marks: Record<PieceLetter, PieceMark>;
   complete: boolean;
 }
 

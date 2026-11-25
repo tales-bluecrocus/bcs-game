@@ -19,6 +19,16 @@ export default function PuzzleApp() {
     savePuzzleState(state);
   }, [state]);
 
+  useEffect(() => {
+    if (state.phase !== 'play') return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'r' || e.key === 'R') dispatch({ type: 'ROTATE' });
+      if (e.key === 'c' || e.key === 'C') dispatch({ type: 'CHECK' });
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [state.phase]);
+
   if (state.phase === 'setup') {
     return (
       <PuzzleSetup
@@ -69,6 +79,11 @@ export default function PuzzleApp() {
     );
   }
 
+  const selectedOnBoard =
+    !!state.selected &&
+    board.slots.some((row) => row.includes(state.selected));
+  const selectedMark = state.selected ? board.marks[state.selected] : undefined;
+
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       <TeamBar
@@ -81,7 +96,7 @@ export default function PuzzleApp() {
       />
 
       <div className="puzzle-table flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-3 sm:p-4">
-        <div className="flex items-center justify-center gap-4">
+        <div className="flex flex-wrap items-center justify-center gap-3">
           {state.imageDataUrl && (
             <div className="hidden shrink-0 sm:block">
               <p className="mb-1 text-center text-[10px] uppercase tracking-wider text-dim">
@@ -94,16 +109,50 @@ export default function PuzzleApp() {
               />
             </div>
           )}
-          {state.selected && (
-            <p className="rounded-full border border-neon2/40 bg-panel/80 px-4 py-1.5 text-sm text-neon2">
-              Piece <strong className="text-txt">{state.selected}</strong> — click a slot (e.g. piece 7 → B2)
-            </p>
+
+          {state.selected ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="rounded-full border border-neon2/40 bg-panel/80 px-4 py-1.5 text-sm text-neon2">
+                Piece <strong className="text-txt">{state.selected}</strong>
+                {board.rotations[state.selected]
+                  ? ` · ${board.rotations[state.selected]}°`
+                  : ''}
+                {selectedMark === 'ok' && (
+                  <span className="ml-2 text-pgreen">correct</span>
+                )}
+                {selectedMark === 'bad' && (
+                  <span className="ml-2 text-pred">wrong</span>
+                )}
+              </p>
+              <button
+                type="button"
+                onClick={() => dispatch({ type: 'ROTATE' })}
+                className="rounded-lg border border-line bg-panel2 px-3 py-1.5 text-sm font-medium text-txt hover:border-neon2"
+                title="Rotate 90° (R)"
+              >
+                Rotate ↻
+              </button>
+              <button
+                type="button"
+                disabled={!selectedOnBoard}
+                onClick={() => dispatch({ type: 'CHECK' })}
+                className="rounded-lg border border-pgreen/50 bg-pgreen/15 px-3 py-1.5 text-sm font-medium text-pgreen hover:bg-pgreen/25 disabled:opacity-35"
+                title="Check if selected piece is correct (C)"
+              >
+                Check
+              </button>
+            </div>
+          ) : (
+            <p className="text-sm text-dim">Select a piece to move, rotate, or check</p>
           )}
         </div>
+
         <Board
           gridSize={state.gridSize}
           slots={board.slots}
           pieces={state.pieces}
+          rotations={board.rotations}
+          marks={board.marks}
           selected={state.selected}
           complete={board.complete}
           teamColor={team.color}
@@ -115,6 +164,7 @@ export default function PuzzleApp() {
       <Tray
         tray={board.tray}
         pieces={state.pieces}
+        rotations={board.rotations}
         gridSize={state.gridSize}
         selected={state.selected}
         complete={board.complete}

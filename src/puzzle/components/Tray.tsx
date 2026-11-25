@@ -1,9 +1,10 @@
-import type { PieceDef, PieceLetter } from '../types';
+import type { PieceDef, PieceLetter, PieceRotation } from '../types';
 import PuzzlePiece from './PuzzlePiece';
 
 interface Props {
   tray: PieceLetter[];
   pieces: Record<PieceLetter, PieceDef>;
+  rotations: Record<PieceLetter, PieceRotation>;
   gridSize: number;
   selected: PieceLetter | null;
   complete: boolean;
@@ -11,15 +12,10 @@ interface Props {
   onPick: (letter: PieceLetter) => void;
 }
 
-/** Stable pseudo-random tilt per piece id */
-function tilt(id: string): number {
-  const n = Number(id) * 17 || id.charCodeAt(0) * 17;
-  return ((n % 17) - 8) * 1.4;
-}
-
 export default function Tray({
   tray,
   pieces,
+  rotations,
   gridSize,
   selected,
   complete,
@@ -37,7 +33,7 @@ export default function Tray({
   return (
     <div className="puzzle-tray shrink-0 px-3 py-4">
       <p className="mb-3 text-center text-xs uppercase tracking-[0.18em] text-amber-100/60">
-        Loose pieces — click a piece, then a slot (e.g. piece 7 → B2)
+        Loose pieces — click piece → slot · Rotate / Check when selected
       </p>
       <div className="flex flex-wrap items-end justify-center gap-3 sm:gap-4">
         {tray.map((letter) => {
@@ -50,9 +46,10 @@ export default function Tray({
               gridSize={gridSize}
               selected={selected === letter}
               accent={teamColor}
-              rotateDeg={tilt(letter)}
+              rotateDeg={rotations[letter] ?? 0}
               sizeClass="h-[4.5rem] w-[4.5rem] sm:h-24 sm:w-24"
               onClick={() => onPick(letter)}
+              fit="tray"
             />
           );
         })}

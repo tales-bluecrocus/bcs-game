@@ -1,12 +1,14 @@
 import { Fragment } from 'react';
 import { colLetter, slotLabel } from '../coords';
-import type { PieceDef, PieceLetter } from '../types';
+import type { PieceDef, PieceLetter, PieceMark, PieceRotation } from '../types';
 import PuzzlePiece from './PuzzlePiece';
 
 interface Props {
   gridSize: number;
   slots: (PieceLetter | null)[][];
   pieces: Record<PieceLetter, PieceDef>;
+  rotations: Record<PieceLetter, PieceRotation>;
+  marks: Record<PieceLetter, PieceMark>;
   selected: PieceLetter | null;
   complete: boolean;
   teamColor: string;
@@ -18,6 +20,8 @@ export default function Board({
   gridSize,
   slots,
   pieces,
+  rotations,
+  marks,
   selected,
   complete,
   teamColor,
@@ -26,7 +30,6 @@ export default function Board({
 }: Props) {
   return (
     <div className="relative mx-auto w-full max-w-[min(68vh,100%)]">
-      {/* wooden frame */}
       <div className="puzzle-frame rounded-xl p-3 sm:p-4">
         <div
           className="grid gap-0"
@@ -63,9 +66,9 @@ export default function Board({
                       if (selected) onPlace(row, col);
                       else if (letter) onPickPiece(letter);
                     }}
-                    className={`puzzle-slot relative aspect-square ${
+                    className={`puzzle-slot relative aspect-square overflow-visible ${
                       canPlace ? 'puzzle-slot--target' : ''
-                    } ${isSelected ? 'z-10' : ''}`}
+                    } ${isSelected ? 'z-20' : 'z-0'}`}
                     title={slotLabel(row, col)}
                   >
                     {!piece && (
@@ -73,15 +76,18 @@ export default function Board({
                         {slotLabel(row, col)}
                       </span>
                     )}
-                    {piece && (
-                      <div className="absolute inset-[4%] flex items-center justify-center">
+                    {piece && letter && (
+                      <div className="absolute inset-0 flex items-center justify-center">
                         <PuzzlePiece
                           piece={piece}
                           gridSize={gridSize}
                           selected={isSelected}
                           accent={teamColor}
+                          rotateDeg={rotations[letter] ?? 0}
                           sizeClass="h-full w-full"
                           interactive={false}
+                          fit="slot"
+                          mark={marks[letter]}
                           showLabel
                         />
                       </div>
