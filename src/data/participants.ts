@@ -1,0 +1,21 @@
+// Present tonight — matches fixed teams in fixedTeams.ts
+export const PARTICIPANTS: string[] = [
+  'Adriana',
+  'Claudia',
+  'Javier',
+  'Jhon',
+  'Jo Nikko',
+  'Jhon Rey',
+  'Lewis',
+  'Mariel',
+  'Matt',
+  'Meg',
+  'Nash',
+  'Nidia',
+  'Nikko',
+  'Pia',
+  'Renz',
+  'Rhyn',
+  'Ruffa',
+  'Sabrina',
+];
