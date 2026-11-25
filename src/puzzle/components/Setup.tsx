@@ -14,7 +14,7 @@ interface Props {
   }) => void;
 }
 
-const GRID_OPTIONS: GridSize[] = [3, 4, 5];
+const GRID_OPTIONS: GridSize[] = [3, 4, 5, 6, 7];
 
 export default function PuzzleSetup({ onStart }: Props) {
   const [namesText, setNamesText] = useState(() => loadRoster().join('\n'));
