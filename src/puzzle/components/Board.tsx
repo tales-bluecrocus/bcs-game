@@ -29,13 +29,13 @@ export default function Board({
   onPlace,
 }: Props) {
   return (
-    <div className="relative mx-auto w-full max-w-[min(68vh,100%)]">
-      <div className="puzzle-frame rounded-xl p-3 sm:p-4">
+    <div className="relative mx-auto aspect-square h-full max-h-full max-w-full">
+      <div className="puzzle-frame absolute inset-0 flex flex-col rounded-xl p-2 sm:p-3">
         <div
-          className="grid gap-0"
+          className="grid min-h-0 flex-1 gap-0"
           style={{
-            gridTemplateColumns: `1.75rem repeat(${gridSize}, minmax(0, 1fr))`,
-            gridTemplateRows: `1.5rem repeat(${gridSize}, minmax(0, 1fr))`,
+            gridTemplateColumns: `1.5rem repeat(${gridSize}, minmax(0, 1fr))`,
+            gridTemplateRows: `1.25rem repeat(${gridSize}, minmax(0, 1fr))`,
           }}
         >
           <div />

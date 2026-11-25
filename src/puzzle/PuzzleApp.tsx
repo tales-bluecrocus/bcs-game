@@ -95,21 +95,8 @@ export default function PuzzleApp() {
         onEnd={() => dispatch({ type: 'END' })}
       />
 
-      <div className="puzzle-table flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-3 sm:p-4">
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          {state.imageDataUrl && (
-            <div className="hidden shrink-0 sm:block">
-              <p className="mb-1 text-center text-[10px] uppercase tracking-wider text-dim">
-                Reference
-              </p>
-              <img
-                src={state.imageDataUrl}
-                alt="Reference"
-                className="h-20 w-20 rounded-md border-2 border-amber-900/60 object-cover shadow-md"
-              />
-            </div>
-          )}
-
+      <div className="puzzle-table flex min-h-0 flex-1 flex-col gap-2 overflow-hidden p-2 sm:p-3">
+        <div className="flex shrink-0 flex-wrap items-center justify-center gap-2 sm:justify-end">
           {state.selected ? (
             <div className="flex flex-wrap items-center gap-2">
               <p className="rounded-full border border-neon2/40 bg-panel/80 px-4 py-1.5 text-sm text-neon2">
@@ -147,18 +134,37 @@ export default function PuzzleApp() {
           )}
         </div>
 
-        <Board
-          gridSize={state.gridSize}
-          slots={board.slots}
-          pieces={state.pieces}
-          rotations={board.rotations}
-          marks={board.marks}
-          selected={state.selected}
-          complete={board.complete}
-          teamColor={team.color}
-          onPickPiece={(letter) => dispatch({ type: 'PICK_PIECE', letter })}
-          onPlace={(row, col) => dispatch({ type: 'PLACE', row, col })}
-        />
+        <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row lg:items-stretch lg:gap-4">
+          {state.imageDataUrl && (
+            <aside className="flex max-h-[34vh] min-h-0 min-w-0 flex-1 flex-col lg:max-h-none lg:max-w-[46%]">
+              <p className="mb-1 shrink-0 text-center text-[10px] uppercase tracking-wider text-dim lg:text-left">
+                Reference
+              </p>
+              <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-xl border-2 border-amber-900/50 bg-black/30 p-2 shadow-lg">
+                <img
+                  src={state.imageDataUrl}
+                  alt="Reference"
+                  className="h-full w-full object-contain"
+                />
+              </div>
+            </aside>
+          )}
+
+          <div className="flex min-h-0 min-w-0 flex-[1.15] items-center justify-center">
+            <Board
+              gridSize={state.gridSize}
+              slots={board.slots}
+              pieces={state.pieces}
+              rotations={board.rotations}
+              marks={board.marks}
+              selected={state.selected}
+              complete={board.complete}
+              teamColor={team.color}
+              onPickPiece={(letter) => dispatch({ type: 'PICK_PIECE', letter })}
+              onPlace={(row, col) => dispatch({ type: 'PLACE', row, col })}
+            />
+          </div>
+        </div>
       </div>
 
       <Tray
